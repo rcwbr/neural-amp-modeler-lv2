@@ -2,6 +2,7 @@
 #include <cmath>
 #include <utility>
 #include <cassert>
+#include <cstdlib>
 
 #include "nam_plugin.h"
 #include <NAM/activations.h>
@@ -384,8 +385,10 @@ namespace NAM {
 
 		LV2_State_Status result = LV2_STATE_SUCCESS;
 
+		const char* model_path_env_var = std::getenv("NAM_LV2_DEFAULT_MODEL");
+
 		// Check if a path is set
-		if (!value || (type != nam->uris.atom_Path))
+		if ((!value || (type != nam->uris.atom_Path)) && model_path_env_var == NULL)
 		{
 			msg.path[0] = '\0';
 		}
@@ -400,8 +403,18 @@ namespace NAM {
 				return LV2_STATE_ERR_NO_FEATURE;
 			}
 
+			char* path;
 			// Map abstract state path to absolute path
-			char* path = map_path->absolute_path(map_path->handle, (const char *)value);
+			if (!value)
+			{
+				lv2_log_trace(&nam->logger, "No model to restore, but NAM_LV2_DEFAULT_MODEL set\n");
+				path = map_path->absolute_path(map_path->handle, model_path_env_var);
+				lv2_log_trace(&nam->logger, "Model path: '%s'\n", path);
+			}
+			else
+			{
+				path = map_path->absolute_path(map_path->handle, (const char *)value);
+			}
 
 			size_t pathLen = strlen(path);
 
